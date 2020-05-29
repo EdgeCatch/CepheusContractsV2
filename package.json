@@ -17,6 +17,7 @@
   ],
   "author": "KStasi",
   "dependencies": {
+    "@taquito/taquito": "^6.3.0-wallet.3",
     "commander": "^5.1.0"
   }
 }
