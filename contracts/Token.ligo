@@ -1,6 +1,7 @@
 // This is an implimentation of the FA1.2 specification in PascaLIGO
+#include "./IToken.ligo"
 
-function isAllowed ( const src : address ; const value : amt ; var s : contract_storage) : bool is 
+function isAllowed ( const src : address ; const value : amt ; var s : token_storage) : bool is 
   begin
     var allowed: bool := False;
     if sender =/= source then block {
@@ -18,7 +19,7 @@ function isAllowed ( const src : address ; const value : amt ; var s : contract_
 // Post conditions:
 //  The balance of accountFrom is decreased by amount
 //  The balance of destination is increased by amount
-function transfer (const accountFrom : address ; const destination : address ; const value : amt ; var s : contract_storage) : contract_storage is
+function transfer (const accountFrom : address ; const destination : address ; const value : amt ; var s : token_storage) : token_storage is
  begin  
   // If accountFrom = destination transfer is not necessary
   if accountFrom = destination then skip;
@@ -72,7 +73,7 @@ function transfer (const accountFrom : address ; const destination : address ; c
 //  The spender account is not the sender account
 // Post conditions:
 //  The allowance of spender in the name of sender is value
-function approve (const spender : address ; const value : amt ; var s : contract_storage) : contract_storage is
+function approve (const spender : address ; const value : amt ; var s : token_storage) : token_storage is
  begin
   // If sender is the spender approving is not necessary
   if sender = spender then skip;
@@ -88,7 +89,7 @@ function approve (const spender : address ; const value : amt ; var s : contract
 //  None
 // Post conditions:
 //  The state is unchanged
-function getAllowance (const owner : address ; const spender : address ; const contr : contract(amt) ; var s : contract_storage) : list(operation) is
+function getAllowance (const owner : address ; const spender : address ; const contr : contract(amt) ; var s : token_storage) : list(operation) is
  begin
   const src: account = get_force(owner, s.ledger);
   const destAllowance: amt = get_force(spender, src.allowances);
@@ -99,7 +100,7 @@ function getAllowance (const owner : address ; const spender : address ; const c
 //  None
 // Post conditions:
 //  The state is unchanged
-function getBalance (const src : address ; const contr : contract(amt) ; var s : contract_storage) : list(operation) is
+function getBalance (const src : address ; const contr : contract(amt) ; var s : token_storage) : list(operation) is
  begin
   const src: account = get_force(src, s.ledger);
  end with list [transaction(src.balance, 0tz, contr)]
@@ -109,11 +110,11 @@ function getBalance (const src : address ; const contr : contract(amt) ; var s :
 //  None
 // Post conditions:
 //  The state is unchanged
-function getTotalSupply (const contr : contract(amt) ; var s : contract_storage) : list(operation) is
+function getTotalSupply (const contr : contract(amt) ; var s : token_storage) : list(operation) is
   list [transaction(s.totalSupply, 0tz, contr)]
 
 function main (const p : tokenAction ; const s : token_storage) :
-  (list(operation) * contract_storage) is
+  (list(operation) * token_storage) is
  block { 
    // Reject any transaction that try to transfer token to this contract
    if amount =/= 0tz then failwith ("This contract do not accept token");
