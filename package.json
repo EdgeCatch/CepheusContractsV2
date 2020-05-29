@@ -1,0 +1,22 @@
+{
+  "name": "cepheus-core",
+  "version": "1.0.0",
+  "description": "Cepheus smart contracts",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EdgeCatch/CepheusContractsV2.git"
+  },
+  "keywords": [
+    "smart contracts",
+    "tezos",
+    "marketplace"
+  ],
+  "author": "KStasi",
+  "dependencies": {
+    "commander": "^5.1.0"
+  }
+}
