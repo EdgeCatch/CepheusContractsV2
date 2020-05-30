@@ -22,7 +22,8 @@ type order_type is record
     buyer_id : address;
     total_price: nat;
     status: nat;
-    items_list: map(string, nat);
+    item: string;
+    count: nat;
     valid_until: timestamp;
 end
 
@@ -50,10 +51,10 @@ type market_action is
 | WithdrawFee of (address * nat)
 | Register of (nat * key)
 | ChangeSubscription of (nat)
-| MakeOrder of (string * map(string, nat))
-| AcceptOrder of (nat)
-| CancelOrder of (nat)
-| ConfirmReceiving of (nat)
+| MakeOrder of (string * string * nat)
+| AcceptOrder of (string)
+| CancelOrder of (string)
+| ConfirmReceiving of (string)
 | Withdraw of (address * nat)
 | AddItem of (string * nat)
 | DeleteItem of (nat)

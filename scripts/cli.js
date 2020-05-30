@@ -7,10 +7,10 @@ const { InMemorySigner } = require("@taquito/signer");
 let buildContract = (contractName, inputDir, outputDir) => {
     exec(
         `docker run -v $PWD:$PWD --rm -i ligolang/ligo:next compile-contract --michelson-format=json $PWD/${inputDir}/${contractName}.ligo main`,
+        { maxBuffer: 1024 * 500 },
         (err, stdout, stderr) => {
             if (err) {
                 console.log(`Error during ${contractName} built`);
-                console.log(stderr);
             } else {
                 console.log(`${contractName} built`);
                 fs.writeFileSync(`./${outputDir}/${contractName}.json`, stdout);

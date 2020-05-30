@@ -85,30 +85,24 @@ block {
 function makeOrder (
     const this : address;
     const ipfs: string;
-    const items: map(string, nat);
+    const item_id: string;
+    const count: nat;
     var s: market_storage ) :  (list(operation) * market_storage) is
 block {
     var user : account_type := get_force(Tezos.sender, s.accounts);
-    var price: nat := 0n;
-    var seller_address : address := ("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg": address);
-    for item_id -> count in map items block {
-        const item : item_type = get_force(item_id, s.items);
-        if seller_address = ("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg": address) then 
-            seller_address := item.seller_id
-        else block {
-            assert(seller_address = item.seller_id);
-        }; 
-        price := price + item.price * count;
-    };
+    const item : item_type = get_force(item_id, s.items);
+    var price: nat := item.price * count;
+    var seller_address : address := item.seller_id;
 
     s.orders[ipfs] := case s.orders[ipfs] of
-        | Some (order) -> (failwith ("Registered yet") : order_type)
+        | Some (order) -> (failwith ("Created yet") : order_type)
         | None -> record
                 seller_id = seller_address;
                 buyer_id = Tezos.sender;
                 total_price = price;
                 status = 1n;
-                items_list = items;
+                item = item_id;
+                count = count;
                 valid_until = Tezos.now + 2592000;
             end 
         end;
@@ -123,16 +117,32 @@ block {
     };
  } with (operations, s)
 
+function manageOrder (
+    const ipfs: string;
+    const accept: bool;
+    var s: market_storage ) :  (market_storage) is
+block { 
+    case s.orders[ipfs] of
+        | Some (order) -> if order.seller_id = Tezos.sender and order.status = 1n then block {
+            if accept then block {
+                order.status := 2n;
+                s.orders[ipfs] := order;
+            } else remove ipfs from map s.orders;
+        } else failwith ("Not permitted")
+        | None -> failwith ("Not requested")
+        end;
+ } with (s)
+
 function main (const p : market_action ; const s : market_storage) :
     (list(operation) * market_storage) is case p of
     | SetSettings(n) -> ((nil : list(operation)), setSettings(n.0, n.1, n.2, n.3, s))
     | WithdrawFee(n) -> withdrawFee(self_address, n.0, n.1, s)  
     | Register(n) -> register(self_address, n.0, n.1, s)
     | ChangeSubscription(n) -> changeSubscription(self_address, n, s)
+    | MakeOrder(n) -> makeOrder(self_address, n.0, n.1, n.2, s)
+    | AcceptOrder(n) -> ((nil : list(operation)), manageOrder(n, True, s))
+    | CancelOrder(n) -> ((nil : list(operation)), manageOrder(n, False, s))
 
-    | MakeOrder(n) -> makeOrder(self_address, n.0, n.1, s)
-    | AcceptOrder(n) -> ((nil : list(operation)), s)
-    | CancelOrder(n) -> ((nil : list(operation)), s)
     | ConfirmReceiving(n) -> ((nil : list(operation)), s)   
     | Withdraw(n) -> withdraw(self_address, n.0, n.1, s)
     
