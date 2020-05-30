@@ -1,23 +1,12 @@
-type subscription is record
+type subscription_type is record
     price : nat;
     fee : nat;
 end
 
-type settings_type is record
-    owner : address;
-    subscriptions : big_map(nat, subscription);
-    cashback: nat;
-    fee_pool: nat;
-    refunds_count: nat;
-    deals_count: nat;
-    items_db: string;
-    orders_db: string;
-end
-
-type account is record
+type account_type is record
     public_key : key;
     balance : nat;
-    subscription_type: nat;
+    subscription: nat;
     subscribed_until: timestamp;
     refunds_count: nat;
     deals_count: nat;
@@ -35,7 +24,7 @@ type order is record
     ipfs: string;
     total_price: nat;
     status: nat;
-    items_list: list(nat);
+    items_list: map(nat, nat);
     valid_until: timestamp;
 end
 
@@ -46,21 +35,30 @@ type refund is record
 end
 
 type market_storage is record
-  payment: address;
-  settings: settings_type;
-  accounts: big_map(address, account);
+  token: address;
+  owner : address;
+  subscriptions : big_map(nat, subscription_type);
+  cashback: nat;
+  fee_pool: nat;
+  items_db: string;
+  orders_db: string;
+  accounts: big_map(address, account_type);
   items: big_map(nat, item);
   orders: big_map(nat, order);
   refunds: big_map(nat, refund);
 end
 
-// type marketAction is
-// | Transfer of (address * address * amt)
-// | Approve of (address * amt)
-// | GetAllowance of (address * address * contract(amt))
-// | GetBalance of (address * contract(amt))
-// | GetTotalSupply of (unit * contract(amt))
-
-
-function main (const p : unit ; const s : market_storage) :
-  (list(operation) * market_storage) is ((nil : list(operation)), s)
+type market_action is
+| SetSettings of (big_map(nat, subscription_type) * nat * string * string)
+| WithdrawFee of (address * nat)
+| Register of (nat * key)
+| ChangeSubscription of (nat)
+| MakeOrder of (string * map(nat, nat))
+| AcceptOrder of (nat)
+| CancelOrder of (nat)
+| ConfirmReceiving of (nat)
+| Withdraw of (address * nat)
+| AddItem of (string * nat)
+| DeleteItem of (nat)
+| RequestRefund of (nat)
+| AcceptRefund of (nat)

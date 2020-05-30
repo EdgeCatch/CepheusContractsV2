@@ -10,7 +10,7 @@ type token_storage is record
   ledger: big_map(address, account);
 end
 
-type tokenAction is
+type token_action is
 | Transfer of (address * address * amt)
 | Approve of (address * amt)
 | GetAllowance of (address * address * contract(amt))

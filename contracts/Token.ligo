@@ -113,7 +113,7 @@ function getBalance (const src : address ; const contr : contract(amt) ; var s :
 function getTotalSupply (const contr : contract(amt) ; var s : token_storage) : list(operation) is
   list [transaction(s.totalSupply, 0tz, contr)]
 
-function main (const p : tokenAction ; const s : token_storage) :
+function main (const p : token_action ; const s : token_storage) :
   (list(operation) * token_storage) is
  block { 
    // Reject any transaction that try to transfer token to this contract
