@@ -12,24 +12,21 @@ type account_type is record
     deals_count: nat;
 end
 
-type item is record
+type item_type is record
     seller_id : address;
     price : nat;
-    ipfs: string;
 end
 
-type order is record
+type order_type is record
     seller_id : address;
     buyer_id : address;
-    ipfs: string;
     total_price: nat;
     status: nat;
-    items_list: map(nat, nat);
+    items_list: map(string, nat);
     valid_until: timestamp;
 end
 
-type refund is record
-    order_id : nat;
+type refund_type is record
     decoded_traking_number : string;
     status: nat;
 end
@@ -43,9 +40,9 @@ type market_storage is record
   items_db: string;
   orders_db: string;
   accounts: big_map(address, account_type);
-  items: big_map(nat, item);
-  orders: big_map(nat, order);
-  refunds: big_map(nat, refund);
+  items: big_map(string, item_type);
+  orders: big_map(string, order_type);
+  refunds: big_map(string, refund_type);
 end
 
 type market_action is
@@ -53,7 +50,7 @@ type market_action is
 | WithdrawFee of (address * nat)
 | Register of (nat * key)
 | ChangeSubscription of (nat)
-| MakeOrder of (string * map(nat, nat))
+| MakeOrder of (string * map(string, nat))
 | AcceptOrder of (nat)
 | CancelOrder of (nat)
 | ConfirmReceiving of (nat)

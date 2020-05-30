@@ -64,14 +64,73 @@ block {
     s.fee_pool := s.fee_pool + subscription_info.price;
  } with (operations, s)
 
+function changeSubscription (
+    const this : address;
+    const subscription: nat;
+    var s: market_storage ) :  (list(operation) * market_storage) is
+block {
+    var user : account_type := get_force(Tezos.sender, s.accounts);
+
+    const subscription_info : subscription_type = get_force(subscription, s.subscriptions);
+    var operations : list(operation) := (nil : list(operation));
+    if subscription_info.price = 0n then skip else block {
+        if user.balance < subscription_info.price then
+            operations := list transaction(Transfer(Tezos.sender, this, subscription_info.price), 0mutez, (get_contract(s.token): contract(token_action))); end;
+        else 
+            user.balance := abs(user.balance - subscription_info.price);
+        s.fee_pool := s.fee_pool + subscription_info.price;
+    };
+ } with (operations, s)
+
+function makeOrder (
+    const this : address;
+    const ipfs: string;
+    const items: map(string, nat);
+    var s: market_storage ) :  (list(operation) * market_storage) is
+block {
+    var user : account_type := get_force(Tezos.sender, s.accounts);
+    var price: nat := 0n;
+    var seller_address : address := ("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg": address);
+    for item_id -> count in map items block {
+        const item : item_type = get_force(item_id, s.items);
+        if seller_address = ("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg": address) then 
+            seller_address := item.seller_id
+        else block {
+            assert(seller_address = item.seller_id);
+        }; 
+        price := price + item.price * count;
+    };
+
+    s.orders[ipfs] := case s.orders[ipfs] of
+        | Some (order) -> (failwith ("Registered yet") : order_type)
+        | None -> record
+                seller_id = seller_address;
+                buyer_id = Tezos.sender;
+                total_price = price;
+                status = 1n;
+                items_list = items;
+                valid_until = Tezos.now + 2592000;
+            end 
+        end;
+
+    var operations : list(operation) := (nil : list(operation));
+    if price = 0n then skip else block {
+        if user.balance < price then
+            operations := list transaction(Transfer(Tezos.sender, this, price), 0mutez, (get_contract(s.token): contract(token_action))); end;
+        else 
+            user.balance := abs(user.balance - price);
+        s.fee_pool := s.fee_pool + price;
+    };
+ } with (operations, s)
+
 function main (const p : market_action ; const s : market_storage) :
     (list(operation) * market_storage) is case p of
     | SetSettings(n) -> ((nil : list(operation)), setSettings(n.0, n.1, n.2, n.3, s))
     | WithdrawFee(n) -> withdrawFee(self_address, n.0, n.1, s)  
-    | Register(n) -> ((nil : list(operation)), s)
+    | Register(n) -> register(self_address, n.0, n.1, s)
+    | ChangeSubscription(n) -> changeSubscription(self_address, n, s)
 
-    | ChangeSubscription(n) -> ((nil : list(operation)), s)
-    | MakeOrder(n) -> ((nil : list(operation)), s)
+    | MakeOrder(n) -> makeOrder(self_address, n.0, n.1, s)
     | AcceptOrder(n) -> ((nil : list(operation)), s)
     | CancelOrder(n) -> ((nil : list(operation)), s)
     | ConfirmReceiving(n) -> ((nil : list(operation)), s)   
@@ -83,13 +142,10 @@ function main (const p : market_action ; const s : market_storage) :
     | AcceptRefund(n) -> ((nil : list(operation)), s)
   end
 
-// | Register of (nat * key)
-// | ChangeSubscription of (nat)
 // | MakeOrder of (string * map(nat, nat))
 // | AcceptOrder of (nat)
 // | CancelOrder of (nat)
 // | ConfirmReceiving of (nat)
-// | Withdraw of (address * nat)
 // | AddItem of (string * nat)
 // | DeleteItem of (nat)
 // | RequestRefund of (nat)
