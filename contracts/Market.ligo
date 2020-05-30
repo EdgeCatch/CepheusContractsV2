@@ -117,18 +117,54 @@ block {
     };
  } with (operations, s)
 
+type order_action is
+| ConfirmOrderAction
+| CancelOrderAction
+| ReceiveOrderAction
+
 function manageOrder (
     const ipfs: string;
-    const accept: bool;
+    const action: order_action;
     var s: market_storage ) :  (market_storage) is
 block { 
     case s.orders[ipfs] of
-        | Some (order) -> if order.seller_id = Tezos.sender and order.status = 1n then block {
-            if accept then block {
-                order.status := 2n;
-                s.orders[ipfs] := order;
-            } else remove ipfs from map s.orders;
-        } else failwith ("Not permitted")
+        | Some (order) -> 
+            case action of
+            | ConfirmOrderAction -> block {
+                if order.seller_id = Tezos.sender and order.status = 1n then block {
+                        order.status := 2n;
+                        s.orders[ipfs] := order;
+                } else failwith ("Not permitted")
+            }
+            | CancelOrderAction -> block {
+                if (order.seller_id = Tezos.sender or order.buyer_id = Tezos.sender) and order.status = 1n then block {
+                    remove ipfs from map s.orders;
+                } else failwith ("Not permitted")
+            }
+            | ReceiveOrderAction -> block {
+                if  order.buyer_id = Tezos.sender and order.status = 2n then block {
+                    var buyer : account_type := get_force(order.buyer_id, s.accounts);
+                    var seller : account_type := get_force(order.seller_id, s.accounts);
+                    const subscription_info : subscription_type = get_force(seller.subscription, s.subscriptions);
+                    const fee: nat = order.total_price * subscription_info.fee / 10000n;
+                    const cashback: nat = order.total_price * s.cashback / 10000n;
+
+                    seller.balance := abs(seller.balance + order.total_price - fee);
+                    seller.deals_count := seller.deals_count + 1n;
+                    assert(s.fee_pool + fee >= cashback);
+
+                    // add profit
+                    s.fee_pool := abs(s.fee_pool + fee - cashback);
+
+                    // add cashback
+                    buyer.balance := buyer.balance + cashback;
+
+                    s.accounts[order.seller_id] := seller;
+                    s.accounts[order.buyer_id] := buyer;
+                    remove ipfs from map s.orders;
+                } else failwith ("Not permitted")
+            }
+            end
         | None -> failwith ("Not requested")
         end;
  } with (s)
@@ -140,10 +176,9 @@ function main (const p : market_action ; const s : market_storage) :
     | Register(n) -> register(self_address, n.0, n.1, s)
     | ChangeSubscription(n) -> changeSubscription(self_address, n, s)
     | MakeOrder(n) -> makeOrder(self_address, n.0, n.1, n.2, s)
-    | AcceptOrder(n) -> ((nil : list(operation)), manageOrder(n, True, s))
-    | CancelOrder(n) -> ((nil : list(operation)), manageOrder(n, False, s))
-
-    | ConfirmReceiving(n) -> ((nil : list(operation)), s)   
+    | AcceptOrder(n) -> ((nil : list(operation)), manageOrder(n, ConfirmOrderAction, s))
+    | CancelOrder(n) -> ((nil : list(operation)), manageOrder(n, CancelOrderAction, s))
+    | ConfirmReceiving(n) -> ((nil : list(operation)), manageOrder(n, ReceiveOrderAction, s))   
     | Withdraw(n) -> withdraw(self_address, n.0, n.1, s)
     
     | AddItem(n) -> ((nil : list(operation)), s)
