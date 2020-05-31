@@ -137,6 +137,28 @@ block {
         end;
  } with (s)
 
+function pay (
+    const ipfs: string;
+    const buyer_id: address;
+    const seller_id: address;
+    const total_price: nat;
+    var s: market_storage ) :  (market_storage) is
+block {
+    var buyer : account_type := get_force(buyer_id, s.accounts);
+    var seller : account_type := get_force(seller_id, s.accounts);
+    const subscription_info : subscription_type = get_force(seller.subscription, s.subscriptions);
+    const fee: nat = total_price * subscription_info.fee / 10000n;
+    const cashback: nat = total_price * s.cashback / 10000n;
+    seller.balance := abs(seller.balance + total_price - fee);
+    seller.deals_count := seller.deals_count + 1n;
+    assert(s.fee_pool + fee >= cashback);
+    s.fee_pool := abs(s.fee_pool + fee - cashback);
+    buyer.balance := buyer.balance + cashback;
+    s.accounts[seller_id] := seller;
+    s.accounts[buyer_id] := buyer;
+    remove ipfs from map s.orders;
+ } with (s)
+
 function manageRefund (
     const ipfs: string;
     const action: refund_action;
@@ -146,25 +168,9 @@ block {
         | Some (order) -> block {
             case action of
             | SellerRefund -> block {
-                if (order.buyer_id = Tezos.sender or s.owner = Tezos.sender)and order.status = 2n then block {
-                    var buyer : account_type := get_force(order.buyer_id, s.accounts);
-                    var seller : account_type := get_force(order.seller_id, s.accounts);
-                    const subscription_info : subscription_type = get_force(seller.subscription, s.subscriptions);
-                    const fee: nat = order.total_price * subscription_info.fee / 10000n;
-                    const cashback: nat = order.total_price * s.cashback / 10000n;
-
-                    seller.balance := abs(seller.balance + order.total_price - fee);
-                    seller.deals_count := seller.deals_count + 1n;
-                    assert(s.fee_pool + fee >= cashback);
-
-                    s.fee_pool := abs(s.fee_pool + fee - cashback);
-
-                    buyer.balance := buyer.balance + cashback;
-
-                    s.accounts[order.seller_id] := seller;
-                    s.accounts[order.buyer_id] := buyer;
-                    remove ipfs from map s.orders;
-                } else failwith ("Not permitted")
+                if (order.buyer_id = Tezos.sender or s.owner = Tezos.sender) and order.status = 2n then 
+                    s := pay (ipfs, order.buyer_id, order.seller_id, order.total_price, s)
+                else failwith ("Not permitted")
             }
             | BuyerRefund -> block {
                 if (order.seller_id = Tezos.sender or s.owner = Tezos.sender)and order.status = 2n then block {
@@ -196,41 +202,20 @@ block {
     case s.orders[ipfs] of
         | Some (order) -> 
             case action of
-            | ConfirmOrderAction -> block {
+            | ConfirmOrderAction ->
                 if order.seller_id = Tezos.sender and order.status = 1n then block {
                         order.status := 2n;
                         order.valid_until := Tezos.now + 2592000;
                         s.orders[ipfs] := order;
                 } else failwith ("Not permitted")
-            }
-            | CancelOrderAction -> block {
+            | CancelOrderAction -> 
                 if (order.seller_id = Tezos.sender or order.buyer_id = Tezos.sender) and order.status = 1n then block {
                     remove ipfs from map s.orders;
                 } else failwith ("Not permitted")
-            }
-            | ReceiveOrderAction -> block {
-                if (order.buyer_id = Tezos.sender or (order.seller_id = Tezos.sender and order.valid_until < Tezos.now))and order.status = 2n then block {
-                    var buyer : account_type := get_force(order.buyer_id, s.accounts);
-                    var seller : account_type := get_force(order.seller_id, s.accounts);
-                    const subscription_info : subscription_type = get_force(seller.subscription, s.subscriptions);
-                    const fee: nat = order.total_price * subscription_info.fee / 10000n;
-                    const cashback: nat = order.total_price * s.cashback / 10000n;
-
-                    seller.balance := abs(seller.balance + order.total_price - fee);
-                    seller.deals_count := seller.deals_count + 1n;
-                    assert(s.fee_pool + fee >= cashback);
-
-                    // add profit
-                    s.fee_pool := abs(s.fee_pool + fee - cashback);
-
-                    // add cashback
-                    buyer.balance := buyer.balance + cashback;
-
-                    s.accounts[order.seller_id] := seller;
-                    s.accounts[order.buyer_id] := buyer;
-                    remove ipfs from map s.orders;
-                } else failwith ("Not permitted")
-            }
+            | ReceiveOrderAction -> 
+                if (order.buyer_id = Tezos.sender or (order.seller_id = Tezos.sender and order.valid_until < Tezos.now)) and order.status = 2n then
+                    s := pay (ipfs, order.buyer_id, order.seller_id, order.total_price, s)
+                else failwith ("Not permitted")
             end
         | None -> failwith ("Not requested")
         end;
@@ -255,11 +240,5 @@ function main (const p : market_action ; const s : market_storage) :
     | AcceptRefund(n) -> ((nil : list(operation)), manageRefund(n.0, n.1, s))
   end
 
-// | MakeOrder of (string * map(nat, nat))
-// | AcceptOrder of (nat)
-// | CancelOrder of (nat)
-// | ConfirmReceiving of (nat)
 // | AddItem of (string * nat)
 // | DeleteItem of (nat)
-// | RequestRefund of (nat)
-// | AcceptRefund of (nat)
