@@ -73,13 +73,12 @@ block {
 
     const subscription_info : subscription_type = get_force(subscription, s.subscriptions);
     var operations : list(operation) := (nil : list(operation));
-    if subscription_info.price = 0n then skip else block {
+    if subscription_info.price = 0n then skip else
         if user.balance < subscription_info.price then
             operations := list transaction(Transfer(Tezos.sender, this, subscription_info.price), 0mutez, (get_contract(s.token): contract(token_action))); end;
         else 
             user.balance := abs(user.balance - subscription_info.price);
         s.fee_pool := s.fee_pool + subscription_info.price;
-    };
  } with (operations, s)
 
 function makeOrder (
@@ -108,14 +107,41 @@ block {
         end;
 
     var operations : list(operation) := (nil : list(operation));
-    if price = 0n then skip else block {
+    if price = 0n then skip else 
         if user.balance < price then
             operations := list transaction(Transfer(Tezos.sender, this, price), 0mutez, (get_contract(s.token): contract(token_action))); end;
         else 
             user.balance := abs(user.balance - price);
         s.fee_pool := s.fee_pool + price;
-    };
  } with (operations, s)
+
+function addItem (
+    const ipfs: string;
+    const price : nat;
+    var s: market_storage ) :  (market_storage) is
+block {
+    var user : account_type := get_force(Tezos.sender, s.accounts);
+    s.items[ipfs] := case s.items[ipfs] of
+        | Some (item) -> (failwith ("Item created yet") : item_type)
+        | None -> record
+                seller_id = Tezos.sender;
+                price = price;
+            end 
+        end;
+ } with (s)
+
+function deleteItem (
+    const ipfs: string;
+    var s: market_storage ) :  (market_storage) is
+block {
+    var user : account_type := get_force(Tezos.sender, s.accounts);
+    case s.items[ipfs] of
+        | Some (item) -> if item.seller_id = Tezos.sender or s.owner = Tezos.sender then
+            remove ipfs from map s.items
+            else failwith ("Not permitted")
+        | None -> failwith ("Item doesn't exist")
+        end;
+ } with (s)
 
 function requestRefund (
     const ipfs: string;
@@ -123,7 +149,7 @@ function requestRefund (
     var s: market_storage ) :  (market_storage) is
 block {
     case s.orders[ipfs] of
-        | Some (order) -> block {
+        | Some (order) ->
             if (order.seller_id = Tezos.sender or order.buyer_id = Tezos.sender) and order.status = 2n then block {
                 order.status := 3n;
                 s.refunds[ipfs] := case s.refunds[ipfs] of
@@ -132,7 +158,6 @@ block {
                 end;
                 s.orders[ipfs] := order;
             } else failwith ("Not permitted")
-        }
         | None -> failwith ("Not requested")
         end;
  } with (s)
@@ -165,14 +190,13 @@ function manageRefund (
     var s: market_storage ) :  (market_storage) is
 block {
     case s.orders[ipfs] of
-        | Some (order) -> block {
+        | Some (order) -> 
             case action of
-            | SellerRefund -> block {
+            | SellerRefund -> 
                 if (order.buyer_id = Tezos.sender or s.owner = Tezos.sender) and order.status = 2n then 
                     s := pay (ipfs, order.buyer_id, order.seller_id, order.total_price, s)
                 else failwith ("Not permitted")
-            }
-            | BuyerRefund -> block {
+            | BuyerRefund ->
                 if (order.seller_id = Tezos.sender or s.owner = Tezos.sender)and order.status = 2n then block {
                     var buyer : account_type := get_force(order.buyer_id, s.accounts);
                     var seller : account_type := get_force(order.seller_id, s.accounts);
@@ -182,9 +206,7 @@ block {
                     s.accounts[order.buyer_id] := buyer;
                     remove ipfs from map s.orders;
                 } else failwith ("Not permitted")
-            }
-            end;
-        }
+            end
         | None -> failwith ("Not requested")
         end;
  } with (s)
@@ -232,9 +254,9 @@ function main (const p : market_action ; const s : market_storage) :
     | CancelOrder(n) -> ((nil : list(operation)), manageOrder(n, CancelOrderAction, s))
     | ConfirmReceiving(n) -> ((nil : list(operation)), manageOrder(n, ReceiveOrderAction, s))   
     | Withdraw(n) -> withdraw(self_address, n.0, n.1, s)
-    
-    | AddItem(n) -> ((nil : list(operation)), s)
-    | DeleteItem(n) -> ((nil : list(operation)), s)
+    | AddItem(n) -> ((nil : list(operation)), addItem(n.0, n.1, s))
+
+    | DeleteItem(n) -> ((nil : list(operation)), deleteItem(n, s))
 
     | RequestRefund(n) -> ((nil : list(operation)), requestRefund(n.0, n.1, s))
     | AcceptRefund(n) -> ((nil : list(operation)), manageRefund(n.0, n.1, s))

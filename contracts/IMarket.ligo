@@ -56,6 +56,6 @@ type market_action is
 | ConfirmReceiving of (string)
 | Withdraw of (address * nat)
 | AddItem of (string * nat)
-| DeleteItem of (nat)
+| DeleteItem of (string)
 | RequestRefund of (string * string)
 | AcceptRefund of (string * refund_action)
