@@ -11,6 +11,7 @@ let buildContract = (contractName, inputDir, outputDir) => {
         (err, stdout, stderr) => {
             if (err) {
                 console.log(`Error during ${contractName} built`);
+                console.log(stderr);
             } else {
                 console.log(`${contractName} built`);
                 fs.writeFileSync(`./${outputDir}/${contractName}.json`, stdout);

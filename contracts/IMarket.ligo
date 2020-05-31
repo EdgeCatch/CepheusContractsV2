@@ -27,11 +27,6 @@ type order_type is record
     valid_until: timestamp;
 end
 
-type refund_type is record
-    decoded_traking_number : string;
-    status: nat;
-end
-
 type market_storage is record
   token: address;
   owner : address;
@@ -43,8 +38,12 @@ type market_storage is record
   accounts: big_map(address, account_type);
   items: big_map(string, item_type);
   orders: big_map(string, order_type);
-  refunds: big_map(string, refund_type);
+  refunds: big_map(string, string);
 end
+
+type refund_action is
+| SellerRefund
+| BuyerRefund
 
 type market_action is
 | SetSettings of (big_map(nat, subscription_type) * nat * string * string)
@@ -58,5 +57,5 @@ type market_action is
 | Withdraw of (address * nat)
 | AddItem of (string * nat)
 | DeleteItem of (nat)
-| RequestRefund of (nat)
-| AcceptRefund of (nat)
+| RequestRefund of (string * string)
+| AcceptRefund of (string * refund_action)
