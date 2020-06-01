@@ -255,12 +255,7 @@ function main (const p : market_action ; const s : market_storage) :
     | ConfirmReceiving(n) -> ((nil : list(operation)), manageOrder(n, ReceiveOrderAction, s))   
     | Withdraw(n) -> withdraw(self_address, n.0, n.1, s)
     | AddItem(n) -> ((nil : list(operation)), addItem(n.0, n.1, s))
-
     | DeleteItem(n) -> ((nil : list(operation)), deleteItem(n, s))
-
     | RequestRefund(n) -> ((nil : list(operation)), requestRefund(n.0, n.1, s))
     | AcceptRefund(n) -> ((nil : list(operation)), manageRefund(n.0, n.1, s))
   end
-
-// | AddItem of (string * nat)
-// | DeleteItem of (nat)

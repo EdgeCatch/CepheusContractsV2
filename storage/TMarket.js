@@ -11,6 +11,10 @@ module.exports = {
         "0": {
             price: "0",
             fee: "200"
+        },
+        "1": {
+            price: "100",
+            fee: "100"
         }
     }),
     accounts: new MichelsonMap(),
