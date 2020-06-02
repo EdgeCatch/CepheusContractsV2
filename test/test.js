@@ -25,7 +25,6 @@ class Market {
         return new Market(Tezos, await Tezos.contract.at(marketAddress))
     }
 
-    // { subscriptions: [], accounts: [], items: [], orders: [], refunds: [] }
     async getFullStorage(maps = { subscriptions: [], accounts: [], items: [], orders: [], refunds: [] }) {
         const storage = await this.contract.storage();
         var result = {
@@ -53,6 +52,22 @@ class Market {
     async setSettings(subscriptions, cashback, items_db, orders_db) {
         const operation = await this.contract.methods
             .setSettings(subscriptions, cashback, items_db, orders_db)
+            .send();
+        await operation.confirmation();
+        return operation;
+    }
+
+    async register(subscription, public_key) {
+        let storage = await this.getFullStorage({ subscriptions: [subscription] });
+        if (storage.subscriptionsExtended[subscription].price != 0) {
+            let token = await this.tezos.contract.at(storage.token);
+            let operation = await token.methods
+                .approve(marketAddress, storage.subscriptionsExtended[subscription].price)
+                .send();
+            await operation.confirmation();
+        }
+        const operation = await this.contract.methods
+            .register(subscription, public_key)
             .send();
         await operation.confirmation();
         return operation;
@@ -95,13 +110,49 @@ describe('Market', function () {
             assert.equal(updatedStorage.cashback, 100);
         });
     });
+    describe('Register()', function () {
+        it('should register free account', async function () {
+            this.timeout(100000);
+            let Tezos = await setup();
+            let market = await Market.init(Tezos);
+            let pkh = await Tezos.signer.publicKeyHash();
+            let initialStorage = await market.getFullStorage({ accounts: [pkh] });
+            assert.equal(initialStorage.accounts[pkh], undefined);
+
+            let operation = await market.register("0", await Tezos.signer.publicKey());
+            assert(operation.status === "applied", "Operation was not applied");
+            let updatedStorage = await market.getFullStorage({ accounts: [pkh] });
+
+            assert.equal(updatedStorage.accountsExtended[pkh].public_key, await Tezos.signer.publicKey());
+            assert.equal(updatedStorage.accountsExtended[pkh].balance, 0);
+            assert.equal(updatedStorage.accountsExtended[pkh].subscription, 0);
+            assert.equal(updatedStorage.accountsExtended[pkh].refunds_count, 0);
+            assert.equal(updatedStorage.accountsExtended[pkh].deals_count, 0);
+        });
+
+        it('should register paid account', async function () {
+            this.timeout(100000);
+            let Tezos = await setup("../key1");
+            let market = await Market.init(Tezos);
+            let pkh = await Tezos.signer.publicKeyHash();
+            let initialStorage = await market.getFullStorage({ accounts: [pkh] });
+            assert.equal(initialStorage.accounts[pkh], undefined);
+
+            let operation = await market.register("1", await Tezos.signer.publicKey());
+            assert(operation.status === "applied", "Operation was not applied");
+            let updatedStorage = await market.getFullStorage({ accounts: [pkh] });
+
+            assert.equal(updatedStorage.accountsExtended[pkh].public_key, await Tezos.signer.publicKey());
+            assert.equal(updatedStorage.accountsExtended[pkh].balance, 0);
+            assert.equal(updatedStorage.accountsExtended[pkh].subscription, 1);
+            assert.equal(updatedStorage.accountsExtended[pkh].refunds_count, 0);
+            assert.equal(updatedStorage.accountsExtended[pkh].deals_count, 0);
+        });
+    });
 });
 
 
-// type market_action is
-// | SetSettings of (big_map(nat, subscription_type) * nat * string * string)
 // | WithdrawFee of (address * nat)
-// | Register of (nat * key)
 // | ChangeSubscription of (nat)
 // | MakeOrder of (string * string * nat)
 // | AcceptOrder of (string)
