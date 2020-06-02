@@ -79,6 +79,8 @@ block {
         else 
             user.balance := abs(user.balance - subscription_info.price);
         s.fee_pool := s.fee_pool + subscription_info.price;
+    user.subscription := subscription;
+    s.accounts[Tezos.sender] := user;
  } with (operations, s)
 
 function makeOrder (
