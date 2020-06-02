@@ -88,6 +88,22 @@ class Market {
         await operation.confirmation();
         return operation;
     }
+
+    async addItem(ipfs, price) {
+        const operation = await this.contract.methods
+            .addItem(ipfs, price)
+            .send();
+        await operation.confirmation();
+        return operation;
+    }
+
+    async deleteItem(ipfs) {
+        const operation = await this.contract.methods
+            .deleteItem(ipfs)
+            .send();
+        await operation.confirmation();
+        return operation;
+    }
 }
 
 const setup = async (keyPath = "../key") => {
@@ -194,6 +210,40 @@ describe('Market', function () {
             assert.equal(updatedStorage.accountsExtended[pkh].subscription, 1);
             assert.equal(updatedStorage.accountsExtended[pkh].refunds_count, 0);
             assert.equal(updatedStorage.accountsExtended[pkh].deals_count, 0);
+        });
+    });
+
+    describe('AddItem()', function () {
+        it('should add new item', async function () {
+            this.timeout(100000);
+            let Tezos = await setup();
+            let market = await Market.init(Tezos);
+            let pkh = await Tezos.signer.publicKeyHash();
+            let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+            let price = "1000";
+
+
+            let operation = await market.addItem(ipfs, price);
+            assert(operation.status === "applied", "Operation was not applied");
+            let updatedStorage = await market.getFullStorage({ items: [ipfs] });
+
+            assert.equal(updatedStorage.itemsExtended[ipfs].seller_id, pkh);
+            assert.equal(updatedStorage.itemsExtended[ipfs].price, parseInt(price));
+        });
+    });
+
+    describe('DeleteItem()', function () {
+        it('should delete item', async function () {
+            this.timeout(100000);
+            let Tezos = await setup();
+            let market = await Market.init(Tezos);
+            let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+
+            let operation = await market.deleteItem(ipfs);
+            assert(operation.status === "applied", "Operation was not applied");
+            let updatedStorage = await market.getFullStorage({ items: [ipfs] });
+
+            assert.equal(updatedStorage.itemsExtended[ipfs], undefined);
         });
     });
 });
