@@ -73,6 +73,30 @@ class Market {
         return operation;
     }
 
+    async makeOrder(ipfs, itemId, count) {
+        let storage = await this.getFullStorage({ items: [itemId] });
+        if (storage.itemsExtended[itemId].price != 0) {
+            let token = await this.tezos.contract.at(storage.token);
+            let operation = await token.methods
+                .approve(marketAddress, storage.itemsExtended[itemId].price * parseInt(count))
+                .send();
+            await operation.confirmation();
+        }
+        const operation = await this.contract.methods
+            .makeOrder(ipfs, itemId, count)
+            .send();
+        await operation.confirmation();
+        return operation;
+    }
+
+    async acceptOrder(ipfs) {
+        const operation = await this.contract.methods
+            .acceptOrder(ipfs)
+            .send();
+        await operation.confirmation();
+        return operation;
+    }
+
     async changeSubscription(subscription) {
         let storage = await this.getFullStorage({ subscriptions: [subscription] });
         if (storage.subscriptionsExtended[subscription].price != 0) {
@@ -116,7 +140,7 @@ const setup = async (keyPath = "../key") => {
 
 describe('Market', function () {
     before(async function () {
-        this.timeout(100000);
+        this.timeout(1000000);
         let tezos = await setup();
         let tezos1 = await setup("../key1");
         let token = await tezos.contract.at(tokenAddress);
@@ -128,7 +152,7 @@ describe('Market', function () {
 
     describe('SetSettings()', function () {
         it('should update settings', async function () {
-            this.timeout(100000);
+            this.timeout(1000000);
             let market = await Market.init(await setup());
             let initialStorage = await market.getFullStorage({ subscriptions: ["0", "1"] });
             assert.equal(initialStorage.fee_pool, 0);
@@ -154,9 +178,10 @@ describe('Market', function () {
             assert.equal(updatedStorage.cashback, 100);
         });
     });
+
     describe('Register()', function () {
         it('should register free account', async function () {
-            this.timeout(100000);
+            this.timeout(1000000);
             let Tezos = await setup();
             let market = await Market.init(Tezos);
             let pkh = await Tezos.signer.publicKeyHash();
@@ -175,7 +200,7 @@ describe('Market', function () {
         });
 
         it('should register paid account', async function () {
-            this.timeout(100000);
+            this.timeout(1000000);
             let Tezos = await setup("../key1");
             let market = await Market.init(Tezos);
             let pkh = await Tezos.signer.publicKeyHash();
@@ -196,7 +221,7 @@ describe('Market', function () {
 
     describe('ChangeSubscription()', function () {
         it('should updated to paid subscription', async function () {
-            this.timeout(100000);
+            this.timeout(1000000);
             let Tezos = await setup();
             let market = await Market.init(Tezos);
             let pkh = await Tezos.signer.publicKeyHash();
@@ -215,7 +240,7 @@ describe('Market', function () {
 
     describe('AddItem()', function () {
         it('should add new item', async function () {
-            this.timeout(100000);
+            this.timeout(1000000);
             let Tezos = await setup();
             let market = await Market.init(Tezos);
             let pkh = await Tezos.signer.publicKeyHash();
@@ -232,9 +257,54 @@ describe('Market', function () {
         });
     });
 
+    describe('MakeOrder()', function () {
+        it('should make an order', async function () {
+            this.timeout(1000000);
+            let Tezos = await setup("../key1");
+            let Tezos1 = await setup();
+            let market = await Market.init(Tezos);
+            let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+            let itemId = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+            let count = "4";
+            let pkh = await Tezos.signer.publicKeyHash();
+            let pkh1 = await Tezos1.signer.publicKeyHash();
+
+            let operation = await market.makeOrder(ipfs, itemId, count);
+            assert(operation.status === "applied", "Operation was not applied");
+            let updatedStorage = await market.getFullStorage({ orders: [ipfs] });
+
+            assert.equal(updatedStorage.ordersExtended[ipfs].seller_id, pkh1);
+            assert.equal(updatedStorage.ordersExtended[ipfs].buyer_id, pkh);
+            assert.equal(updatedStorage.ordersExtended[ipfs].total_price, 4000);
+            assert.equal(updatedStorage.ordersExtended[ipfs].status, 1);
+            assert.equal(updatedStorage.ordersExtended[ipfs].item, itemId);
+            assert.equal(updatedStorage.ordersExtended[ipfs].count, parseInt(count));
+        });
+    });
+
+    describe('AcceptOrder()', function () {
+        it('should accept an order', async function () {
+            this.timeout(1000000);
+            let Tezos = await setup();
+            let Tezos1 = await setup("../key1");
+            let market = await Market.init(Tezos);
+            let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+            let pkh = await Tezos.signer.publicKeyHash();
+            let pkh1 = await Tezos1.signer.publicKeyHash();
+
+            let operation = await market.acceptOrder(ipfs);
+            assert(operation.status === "applied", "Operation was not applied");
+            let updatedStorage = await market.getFullStorage({ orders: [ipfs] });
+
+            assert.equal(updatedStorage.ordersExtended[ipfs].seller_id, pkh);
+            assert.equal(updatedStorage.ordersExtended[ipfs].buyer_id, pkh1);
+            assert.equal(updatedStorage.ordersExtended[ipfs].status, 2);
+        });
+    });
+
     describe('DeleteItem()', function () {
         it('should delete item', async function () {
-            this.timeout(100000);
+            this.timeout(1000000);
             let Tezos = await setup();
             let market = await Market.init(Tezos);
             let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
@@ -248,15 +318,9 @@ describe('Market', function () {
     });
 });
 
-
 // | WithdrawFee of (address * nat)
-// | ChangeSubscription of (nat)
-// | MakeOrder of (string * string * nat)
-// | AcceptOrder of (string)
 // | CancelOrder of (string)
 // | ConfirmReceiving of (string)
 // | Withdraw of (address * nat)
-// | AddItem of (string * nat)
-// | DeleteItem of (string)
 // | RequestRefund of (string * string)
 // | AcceptRefund of (string * refund_action)
