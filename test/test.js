@@ -97,6 +97,14 @@ class Market {
         return operation;
     }
 
+    async confirmReceiving(ipfs) {
+        const operation = await this.contract.methods
+            .confirmReceiving(ipfs)
+            .send();
+        await operation.confirmation();
+        return operation;
+    }
+
     async changeSubscription(subscription) {
         let storage = await this.getFullStorage({ subscriptions: [subscription] });
         if (storage.subscriptionsExtended[subscription].price != 0) {
@@ -302,6 +310,28 @@ describe('Market', function () {
         });
     });
 
+    describe('ConfirmReceiving()', function () {
+        it('should confirm receiving an order', async function () {
+            this.timeout(1000000);
+            let Tezos = await setup("../key1");
+            let Tezos1 = await setup();
+            let market = await Market.init(Tezos);
+            let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+            let pkh = await Tezos.signer.publicKeyHash();
+            let pkh1 = await Tezos1.signer.publicKeyHash();
+
+            let prevStorage = await market.getFullStorage({ orders: [ipfs], accounts: [pkh1] });
+            let operation = await market.confirmReceiving(ipfs);
+            assert(operation.status === "applied", "Operation was not applied");
+            let updatedStorage = await market.getFullStorage({ orders: [ipfs], accounts: [pkh1] });
+
+            assert.equal(updatedStorage.ordersExtended[ipfs], undefined);
+            assert.equal(updatedStorage.accountsExtended[pkh1].balance, parseInt(4000 * 0.99));
+            assert.equal(updatedStorage.accountsExtended[pkh1].deals_count, 1);
+            assert.equal(updatedStorage.fee_pool - prevStorage.fee_pool, parseInt(4000 * 0.01));
+        });
+    });
+
     describe('DeleteItem()', function () {
         it('should delete item', async function () {
             this.timeout(1000000);
@@ -319,8 +349,10 @@ describe('Market', function () {
 });
 
 // | WithdrawFee of (address * nat)
+// | Withdraw of (address * nat)
+
 // | CancelOrder of (string)
 // | ConfirmReceiving of (string)
-// | Withdraw of (address * nat)
 // | RequestRefund of (string * string)
 // | AcceptRefund of (string * refund_action)
+// TODO: method to deposit
