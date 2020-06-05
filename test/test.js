@@ -136,6 +136,22 @@ class Market {
         await operation.confirmation();
         return operation;
     }
+
+    async withdraw(address, amount) {
+        const operation = await this.contract.methods
+            .withdraw(address, amount)
+            .send();
+        await operation.confirmation();
+        return operation;
+    }
+
+    async withdrawFee(address, amount) {
+        const operation = await this.contract.methods
+            .withdrawFee(address, amount)
+            .send();
+        await operation.confirmation();
+        return operation;
+    }
 }
 
 const setup = async (keyPath = "../key") => {
@@ -153,7 +169,7 @@ describe('Market', function () {
         let tezos1 = await setup("../key1");
         let token = await tezos.contract.at(tokenAddress);
         let operation = await token.methods
-            .transfer(await tezos.signer.publicKeyHash(), await tezos1.signer.publicKeyHash(), 10000)
+            .transfer(await tezos.signer.publicKeyHash(), await tezos1.signer.publicKeyHash(), "100000")
             .send();
         await operation.confirmation();
     });
@@ -167,15 +183,18 @@ describe('Market', function () {
             let subscriptions = MichelsonMap.fromLiteral({
                 "0": {
                     price: "0",
-                    fee: "200"
+                    fee: "200",
+                    name: "Free"
                 },
                 "1": {
                     price: "100",
-                    fee: "100"
+                    fee: "100",
+                    name: "Standard"
                 },
                 "2": {
                     price: "5000",
-                    fee: "0"
+                    fee: "0",
+                    name: "Premium"
                 }
             });
             let operation = await market.setSettings(subscriptions, 100, "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p", "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p")
@@ -317,7 +336,6 @@ describe('Market', function () {
             let Tezos1 = await setup();
             let market = await Market.init(Tezos);
             let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
-            let pkh = await Tezos.signer.publicKeyHash();
             let pkh1 = await Tezos1.signer.publicKeyHash();
 
             let prevStorage = await market.getFullStorage({ orders: [ipfs], accounts: [pkh1] });
@@ -329,6 +347,24 @@ describe('Market', function () {
             assert.equal(updatedStorage.accountsExtended[pkh1].balance, parseInt(4000 * 0.99));
             assert.equal(updatedStorage.accountsExtended[pkh1].deals_count, 1);
             assert.equal(updatedStorage.fee_pool - prevStorage.fee_pool, parseInt(4000 * 0.01));
+        });
+    });
+
+    describe('WithdrawFee()', function () {
+        it('should confirm receiving an order', async function () {
+            this.timeout(1000000);
+            let Tezos = await setup();
+            let market = await Market.init(Tezos);
+            let pkh = await Tezos.signer.publicKeyHash();
+            let amount = "2000";
+
+            let prevStorage = await market.getFullStorage({ accounts: [pkh] });
+            let operation = await market.withdraw(pkh, amount);
+            assert(operation.status === "applied", "Operation was not applied");
+
+            let updatedStorage = await market.getFullStorage({ accounts: [pkh] });
+
+            assert.equal(prevStorage.accountsExtended[pkh] - updatedStorage.accountsExtended[pkh].balance, parseInt(amount));
         });
     });
 

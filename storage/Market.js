@@ -9,6 +9,7 @@ module.exports = {
     orders_db: "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p",
     subscriptions: MichelsonMap.fromLiteral({
         "0": {
+            name: "Free",
             price: "0",
             fee: "200"
         }

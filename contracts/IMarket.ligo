@@ -1,4 +1,5 @@
 type subscription_type is record
+    name : string;
     price : nat;
     fee : nat;
 end
