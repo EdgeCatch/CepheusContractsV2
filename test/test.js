@@ -6,6 +6,7 @@ const path = require('path');
 const provider = "https://api.tez.ie/rpc/carthagenet";
 const { InMemorySigner } = require("@taquito/signer");
 const { MichelsonMap } = require('@taquito/michelson-encoder');
+const crypto = require('crypto');
 
 
 const { address: tokenAddress } = JSON.parse(
@@ -80,6 +81,7 @@ class Market {
             let operation = await token.methods
                 .approve(marketAddress, storage.itemsExtended[itemId].price * parseInt(count))
                 .send();
+            console.log(storage.itemsExtended[itemId].price * parseInt(count));
             await operation.confirmation();
         }
         const operation = await this.contract.methods
@@ -197,7 +199,7 @@ describe('Market', function () {
                     name: "Premium"
                 }
             });
-            let operation = await market.setSettings(subscriptions, 100, "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p", "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p")
+            let operation = await market.setSettings(subscriptions, 100, "bafyreiggcejixnw5wo3gesymhbcwfo7p6yrro2u2se4fcsxikwiexk2efm")
             assert(operation.status === "applied", "Operation was not applied");
             let updatedStorage = await market.getFullStorage({ subscriptions: ["0", "1", "2"] });
             assert.equal(updatedStorage.subscriptionsExtended["2"].price, 5000);
@@ -214,12 +216,16 @@ describe('Market', function () {
             let pkh = await Tezos.signer.publicKeyHash();
             let initialStorage = await market.getFullStorage({ accounts: [pkh] });
             assert.equal(initialStorage.accountsExtended[pkh], undefined);
-
-            let operation = await market.register("0", await Tezos.signer.publicKey());
+            const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+                modulusLength: 2048,
+                publicKeyEncoding: { type: 'spki', format: 'der' },
+                privateKeyEncoding: { type: 'pkcs8', format: 'der' }
+            })
+            let operation = await market.register("0", publicKey.toString("hex"));
             assert(operation.status === "applied", "Operation was not applied");
             let updatedStorage = await market.getFullStorage({ accounts: [pkh] });
 
-            assert.equal(updatedStorage.accountsExtended[pkh].public_key, await Tezos.signer.publicKey());
+            assert.equal(updatedStorage.accountsExtended[pkh].public_key, publicKey.toString("hex"));
             assert.equal(updatedStorage.accountsExtended[pkh].balance, 0);
             assert.equal(updatedStorage.accountsExtended[pkh].subscription, 0);
             assert.equal(updatedStorage.accountsExtended[pkh].refunds_count, 0);
@@ -233,12 +239,16 @@ describe('Market', function () {
             let pkh = await Tezos.signer.publicKeyHash();
             let initialStorage = await market.getFullStorage({ accounts: [pkh] });
             assert.equal(initialStorage.accountsExtended[pkh], undefined);
-
-            let operation = await market.register("1", await Tezos.signer.publicKey());
+            const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+                modulusLength: 2048,
+                publicKeyEncoding: { type: 'spki', format: 'der' },
+                privateKeyEncoding: { type: 'pkcs8', format: 'der' }
+            })
+            let operation = await market.register("1", publicKey.toString("hex"));
             assert(operation.status === "applied", "Operation was not applied");
             let updatedStorage = await market.getFullStorage({ accounts: [pkh] });
 
-            assert.equal(updatedStorage.accountsExtended[pkh].public_key, await Tezos.signer.publicKey());
+            assert.equal(updatedStorage.accountsExtended[pkh].public_key, publicKey.toString("hex"));
             assert.equal(updatedStorage.accountsExtended[pkh].balance, 0);
             assert.equal(updatedStorage.accountsExtended[pkh].subscription, 1);
             assert.equal(updatedStorage.accountsExtended[pkh].refunds_count, 0);
@@ -271,7 +281,7 @@ describe('Market', function () {
             let Tezos = await setup();
             let market = await Market.init(Tezos);
             let pkh = await Tezos.signer.publicKeyHash();
-            let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+            let ipfs = "bafyreiggcejixnw5wo3gesymhbcwfo7p6yrro2u2se4fcsxikwiexk2efm";
             let price = "1000";
 
 
@@ -290,8 +300,8 @@ describe('Market', function () {
             let Tezos = await setup("../key1");
             let Tezos1 = await setup();
             let market = await Market.init(Tezos);
-            let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
-            let itemId = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+            let ipfs = "bafyreiggcejixnw5wo3gesymhbcwfo7p6yrro2u2se4fcsxikwiexk2efm";
+            let itemId = "bafyreiggcejixnw5wo3gesymhbcwfo7p6yrro2u2se4fcsxikwiexk2efm";
             let count = "4";
             let pkh = await Tezos.signer.publicKeyHash();
             let pkh1 = await Tezos1.signer.publicKeyHash();
@@ -315,7 +325,7 @@ describe('Market', function () {
             let Tezos = await setup();
             let Tezos1 = await setup("../key1");
             let market = await Market.init(Tezos);
-            let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+            let ipfs = "bafyreiggcejixnw5wo3gesymhbcwfo7p6yrro2u2se4fcsxikwiexk2efm";
             let pkh = await Tezos.signer.publicKeyHash();
             let pkh1 = await Tezos1.signer.publicKeyHash();
 
@@ -335,7 +345,7 @@ describe('Market', function () {
             let Tezos = await setup("../key1");
             let Tezos1 = await setup();
             let market = await Market.init(Tezos);
-            let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+            let ipfs = "bafyreiggcejixnw5wo3gesymhbcwfo7p6yrro2u2se4fcsxikwiexk2efm";
             let pkh1 = await Tezos1.signer.publicKeyHash();
 
             let prevStorage = await market.getFullStorage({ orders: [ipfs], accounts: [pkh1] });
@@ -373,7 +383,7 @@ describe('Market', function () {
             this.timeout(1000000);
             let Tezos = await setup();
             let market = await Market.init(Tezos);
-            let ipfs = "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p";
+            let ipfs = "bafyreiggcejixnw5wo3gesymhbcwfo7p6yrro2u2se4fcsxikwiexk2efm";
 
             let operation = await market.deleteItem(ipfs);
             assert(operation.status === "applied", "Operation was not applied");

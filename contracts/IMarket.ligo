@@ -5,7 +5,7 @@ type subscription_type is record
 end
 
 type account_type is record
-    public_key : key;
+    public_key : bytes;
     balance : nat;
     subscription: nat;
     subscribed_until: timestamp;
@@ -48,7 +48,7 @@ type refund_action is
 type market_action is
 | SetSettings of (big_map(nat, subscription_type) * nat * string)
 | WithdrawFee of (address * nat)
-| Register of (nat * key)
+| Register of (nat * bytes)
 | ChangeSubscription of (nat)
 | MakeOrder of (string * string * nat)
 | AcceptOrder of (string)

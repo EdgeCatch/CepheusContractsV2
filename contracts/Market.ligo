@@ -39,7 +39,7 @@ block {
 function register (
     const this : address;
     const subscription: nat;
-    const public_key: key;
+    const public_key: bytes;
     var s: market_storage ) :  (list(operation) * market_storage) is
 block {
     s.accounts[Tezos.sender] := case s.accounts[Tezos.sender] of

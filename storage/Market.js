@@ -1,7 +1,11 @@
 const { MichelsonMap } = require('@taquito/michelson-encoder');
+const fs = require("fs");
 
+const { address: tokenAddress } = JSON.parse(
+    fs.readFileSync("./deploy/Token.json").toString()
+);
 module.exports = {
-    token: "KT1AnRxYfAivSmNmsnT1v1uXxz4tQfxVWvJ6",
+    token: tokenAddress,
     owner: "tz1bQEJqMqC92ommfsRB6pWG9LVBKNgXPysh",
     cashback: "10",
     fee_pool: "0",
