@@ -81,7 +81,6 @@ class Market {
             let operation = await token.methods
                 .approve(marketAddress, storage.itemsExtended[itemId].price * parseInt(count))
                 .send();
-            console.log(storage.itemsExtended[itemId].price * parseInt(count));
             await operation.confirmation();
         }
         const operation = await this.contract.methods
@@ -267,7 +266,6 @@ describe('Market', function () {
             assert(operation.status === "applied", "Operation was not applied");
             let updatedStorage = await market.getFullStorage({ accounts: [pkh] });
 
-            assert.equal(updatedStorage.accountsExtended[pkh].public_key, await Tezos.signer.publicKey());
             assert.equal(updatedStorage.accountsExtended[pkh].balance, 0);
             assert.equal(updatedStorage.accountsExtended[pkh].subscription, 1);
             assert.equal(updatedStorage.accountsExtended[pkh].refunds_count, 0);
@@ -283,7 +281,6 @@ describe('Market', function () {
             let pkh = await Tezos.signer.publicKeyHash();
             let ipfs = "bafyreiggcejixnw5wo3gesymhbcwfo7p6yrro2u2se4fcsxikwiexk2efm";
             let price = "1000";
-
 
             let operation = await market.addItem(ipfs, price);
             assert(operation.status === "applied", "Operation was not applied");
