@@ -35,7 +35,6 @@ type market_storage is record
   cashback: nat;
   fee_pool: nat;
   items_db: string;
-  orders_db: string;
   accounts: big_map(address, account_type);
   items: big_map(string, item_type);
   orders: big_map(string, order_type);
@@ -47,7 +46,7 @@ type refund_action is
 | BuyerRefund
 
 type market_action is
-| SetSettings of (big_map(nat, subscription_type) * nat * string * string)
+| SetSettings of (big_map(nat, subscription_type) * nat * string)
 | WithdrawFee of (address * nat)
 | Register of (nat * key)
 | ChangeSubscription of (nat)

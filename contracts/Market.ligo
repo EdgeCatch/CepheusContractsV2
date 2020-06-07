@@ -5,14 +5,12 @@ function setSettings (
     const subscriptions : big_map(nat, subscription_type);
     const cashback: nat;
     const items_db: string;
-    const orders_db: string;
     var s: market_storage ) :  (market_storage) is
 block {
     if Tezos.sender =/= s.owner then failwith("Permision denied") else skip;
     s.subscriptions := subscriptions;
     s.cashback := cashback;
     s.items_db := items_db;
-    s.orders_db := orders_db;
  } with s
 
 function withdrawFee (
@@ -130,6 +128,7 @@ block {
                 price = price;
             end 
         end;
+    s.items_db := ipfs;
  } with (s)
 
 function deleteItem (
@@ -247,7 +246,7 @@ block {
 
 function main (const p : market_action ; const s : market_storage) :
     (list(operation) * market_storage) is case p of
-    | SetSettings(n) -> ((nil : list(operation)), setSettings(n.0, n.1, n.2, n.3, s))
+    | SetSettings(n) -> ((nil : list(operation)), setSettings(n.0, n.1, n.2, s))
     | WithdrawFee(n) -> withdrawFee(self_address, n.0, n.1, s)  
     | Register(n) -> register(self_address, n.0, n.1, s)
     | ChangeSubscription(n) -> changeSubscription(self_address, n, s)

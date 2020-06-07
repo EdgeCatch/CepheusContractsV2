@@ -5,8 +5,7 @@ module.exports = {
     owner: "tz1bQEJqMqC92ommfsRB6pWG9LVBKNgXPysh",
     cashback: "10",
     fee_pool: "0",
-    items_db: "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p",
-    orders_db: "Qmeg1Hqu2Dxf35TxDg18b7StQTMwjCqhWigm8ANgm8wA3p",
+    items_db: "bafyreicbaggkk7fymwwpdxelydxftfh7naq7dxlzz6tptuycp55u4rzzle",
     subscriptions: MichelsonMap.fromLiteral({
         "0": {
             name: "Free",
