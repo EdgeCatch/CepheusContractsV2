@@ -39,7 +39,7 @@ block {
 function register (
     const this : address;
     const subscription: nat;
-    const public_key: bytes;
+    const public_key: string;
     var s: market_storage ) :  (list(operation) * market_storage) is
 block {
     s.accounts[Tezos.sender] := case s.accounts[Tezos.sender] of
@@ -53,7 +53,8 @@ block {
                 deals_count = 0n;
             end 
         end;
-
+    s.seller_orders[Tezos.sender] := (set [] : set(string));
+    s.buyer_orders[Tezos.sender] := (set [] : set(string));
     const subscription_info : subscription_type = get_force(subscription, s.subscriptions);
     const operations : list(operation) = if subscription_info.price =/= 0n then
         list transaction(Transfer(Tezos.sender, this, subscription_info.price), 0mutez, (get_contract(s.token): contract(token_action))); end 
@@ -105,7 +106,8 @@ block {
                 valid_until = Tezos.now + 2592000;
             end 
         end;
-
+    s.seller_orders[seller_address] := Set.add (ipfs, get_force(seller_address, s.seller_orders));
+    s.buyer_orders[Tezos.sender] := Set.add (ipfs, get_force(Tezos.sender,s.buyer_orders));
     var operations : list(operation) := (nil : list(operation));
     if price = 0n then skip else 
         if user.balance < price then

@@ -5,7 +5,7 @@ type subscription_type is record
 end
 
 type account_type is record
-    public_key : bytes;
+    public_key : string;
     balance : nat;
     subscription: nat;
     subscribed_until: timestamp;
@@ -37,6 +37,8 @@ type market_storage is record
   items_db: string;
   accounts: big_map(address, account_type);
   items: big_map(string, item_type);
+  seller_orders: big_map(address, set(string));
+  buyer_orders: big_map(address, set(string));
   orders: big_map(string, order_type);
   refunds: big_map(string, string);
 end
@@ -48,7 +50,7 @@ type refund_action is
 type market_action is
 | SetSettings of (big_map(nat, subscription_type) * nat * string)
 | WithdrawFee of (address * nat)
-| Register of (nat * bytes)
+| Register of (nat * string)
 | ChangeSubscription of (nat)
 | MakeOrder of (string * string * nat)
 | AcceptOrder of (string)
