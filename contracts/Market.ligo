@@ -107,7 +107,7 @@ block {
             end 
         end;
     s.seller_orders[seller_address] := Set.add (ipfs, get_force(seller_address, s.seller_orders));
-    s.buyer_orders[Tezos.sender] := Set.add (ipfs, get_force(Tezos.sender,s.buyer_orders));
+    s.buyer_orders[Tezos.sender] := Set.add (ipfs, get_force(Tezos.sender, s.buyer_orders));
     var operations : list(operation) := (nil : list(operation));
     if price = 0n then skip else 
         if user.balance < price then
@@ -235,6 +235,9 @@ block {
                 } else failwith ("Not permitted")
             | CancelOrderAction -> 
                 if (order.seller_id = Tezos.sender or order.buyer_id = Tezos.sender) and order.status = 1n then block {
+                    var buyer : account_type := get_force(order.buyer_id, s.accounts);
+                    buyer.balance := buyer.balance + order.total_price;
+                    s.accounts[order.buyer_id] := buyer;
                     remove ipfs from map s.orders;
                 } else failwith ("Not permitted")
             | ReceiveOrderAction -> 
