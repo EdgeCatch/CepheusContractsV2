@@ -100,6 +100,7 @@ block {
                 seller_id = seller_address;
                 buyer_id = Tezos.sender;
                 total_price = price;
+                delivery_ipfs = "";
                 status = 1n;
                 item = item_id;
                 count = count;
@@ -215,7 +216,7 @@ block {
  } with (s)
 
 type order_action is
-| ConfirmOrderAction
+| ConfirmOrderAction of string
 | CancelOrderAction
 | ReceiveOrderAction
 
@@ -227,10 +228,11 @@ block {
     case s.orders[ipfs] of
         | Some (order) -> 
             case action of
-            | ConfirmOrderAction ->
+            | ConfirmOrderAction(d) ->
                 if order.seller_id = Tezos.sender and order.status = 1n then block {
                         order.status := 2n;
                         order.valid_until := Tezos.now + 2592000;
+                        order.delivery_ipfs := d;
                         s.orders[ipfs] := order;
                 } else failwith ("Not permitted")
             | CancelOrderAction -> 
@@ -256,7 +258,7 @@ function main (const p : market_action ; const s : market_storage) :
     | Register(n) -> register(self_address, n.0, n.1, s)
     | ChangeSubscription(n) -> changeSubscription(self_address, n, s)
     | MakeOrder(n) -> makeOrder(self_address, n.0, n.1, n.2, s)
-    | AcceptOrder(n) -> ((nil : list(operation)), manageOrder(n, ConfirmOrderAction, s))
+    | AcceptOrder(n) -> ((nil : list(operation)), manageOrder(n.0, ConfirmOrderAction(n.1), s))
     | CancelOrder(n) -> ((nil : list(operation)), manageOrder(n, CancelOrderAction, s))
     | ConfirmReceiving(n) -> ((nil : list(operation)), manageOrder(n, ReceiveOrderAction, s))   
     | Withdraw(n) -> withdraw(self_address, n.0, n.1, s)

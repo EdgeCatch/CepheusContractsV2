@@ -21,6 +21,7 @@ end
 type order_type is record
     seller_id : address;
     buyer_id : address;
+    delivery_ipfs: string;
     total_price: nat;
     status: nat;
     item: string;
@@ -53,7 +54,7 @@ type market_action is
 | Register of (nat * string)
 | ChangeSubscription of (nat)
 | MakeOrder of (string * string * nat)
-| AcceptOrder of (string)
+| AcceptOrder of (string * string)
 | CancelOrder of (string)
 | ConfirmReceiving of (string)
 | Withdraw of (address * nat)
