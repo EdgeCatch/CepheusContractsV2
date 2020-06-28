@@ -168,24 +168,23 @@ block {
 
 function pay (
     const ipfs: string;
-    const buyer_id: address;
-    const seller_id: address;
-    const total_price: nat;
+    const order: order_type;
     var s: market_storage ) :  (market_storage) is
 block {
-    var buyer : account_type := get_force(buyer_id, s.accounts);
-    var seller : account_type := get_force(seller_id, s.accounts);
+    var buyer : account_type := get_force(order.buyer_id, s.accounts);
+    var seller : account_type := get_force(order.seller_id, s.accounts);
     const subscription_info : subscription_type = get_force(seller.subscription, s.subscriptions);
-    const fee: nat = total_price * subscription_info.fee / 10000n;
-    const cashback: nat = total_price * s.cashback / 10000n;
-    seller.balance := abs(seller.balance + total_price - fee);
+    const fee: nat = order.total_price * subscription_info.fee / 10000n;
+    const cashback: nat = order.total_price * s.cashback / 10000n;
+    seller.balance := abs(seller.balance + order.total_price - fee);
     seller.deals_count := seller.deals_count + 1n;
     assert(s.fee_pool + fee >= cashback);
     s.fee_pool := abs(s.fee_pool + fee - cashback);
     buyer.balance := buyer.balance + cashback;
-    s.accounts[seller_id] := seller;
-    s.accounts[buyer_id] := buyer;
-    remove ipfs from map s.orders;
+    s.accounts[order.seller_id] := seller;
+    s.accounts[order.buyer_id] := buyer;
+    order.status := 6n;
+    s.orders[ipfs] := order;
  } with (s)
 
 function manageRefund (
@@ -198,7 +197,7 @@ block {
             case action of
             | SellerRefund -> 
                 if (order.buyer_id = Tezos.sender or s.owner = Tezos.sender) and order.status = 2n then 
-                    s := pay (ipfs, order.buyer_id, order.seller_id, order.total_price, s)
+                    s := pay (ipfs, order, s)
                 else failwith ("Not permitted")
             | BuyerRefund ->
                 if (order.seller_id = Tezos.sender or s.owner = Tezos.sender)and order.status = 2n then block {
@@ -208,7 +207,8 @@ block {
                     seller.refunds_count := seller.refunds_count + 1n;
                     s.accounts[order.seller_id] := seller;
                     s.accounts[order.buyer_id] := buyer;
-                    remove ipfs from map s.orders;
+                    order.status := 5n;
+                    s.orders[ipfs] := order;
                 } else failwith ("Not permitted")
             end
         | None -> failwith ("Not requested")
@@ -240,11 +240,12 @@ block {
                     var buyer : account_type := get_force(order.buyer_id, s.accounts);
                     buyer.balance := buyer.balance + order.total_price;
                     s.accounts[order.buyer_id] := buyer;
-                    remove ipfs from map s.orders;
+                    order.status := 4n;
+                    s.orders[ipfs] := order;
                 } else failwith ("Not permitted")
             | ReceiveOrderAction -> 
                 if (order.buyer_id = Tezos.sender or (order.seller_id = Tezos.sender and order.valid_until < Tezos.now)) and order.status = 2n then
-                    s := pay (ipfs, order.buyer_id, order.seller_id, order.total_price, s)
+                    s := pay (ipfs, order, s)
                 else failwith ("Not permitted")
             end
         | None -> failwith ("Not requested")
@@ -254,14 +255,14 @@ block {
 function main (const p : market_action ; const s : market_storage) :
     (list(operation) * market_storage) is case p of
     | SetSettings(n) -> ((nil : list(operation)), setSettings(n.0, n.1, n.2, s))
-    | WithdrawFee(n) -> withdrawFee(self_address, n.0, n.1, s)  
-    | Register(n) -> register(self_address, n.0, n.1, s)
-    | ChangeSubscription(n) -> changeSubscription(self_address, n, s)
-    | MakeOrder(n) -> makeOrder(self_address, n.0, n.1, n.2, s)
+    | WithdrawFee(n) -> withdrawFee(Tezos.self_address, n.0, n.1, s)  
+    | Register(n) -> register(Tezos.self_address, n.0, n.1, s)
+    | ChangeSubscription(n) -> changeSubscription(Tezos.self_address, n, s)
+    | MakeOrder(n) -> makeOrder(Tezos.self_address, n.0, n.1, n.2, s)
     | AcceptOrder(n) -> ((nil : list(operation)), manageOrder(n.0, ConfirmOrderAction(n.1), s))
     | CancelOrder(n) -> ((nil : list(operation)), manageOrder(n, CancelOrderAction, s))
     | ConfirmReceiving(n) -> ((nil : list(operation)), manageOrder(n, ReceiveOrderAction, s))   
-    | Withdraw(n) -> withdraw(self_address, n.0, n.1, s)
+    | Withdraw(n) -> withdraw(Tezos.self_address, n.0, n.1, s)
     | AddItem(n) -> ((nil : list(operation)), addItem(n.0, n.1, s))
     | DeleteItem(n) -> ((nil : list(operation)), deleteItem(n, s))
     | RequestRefund(n) -> ((nil : list(operation)), requestRefund(n.0, n.1, s))
