@@ -3,7 +3,7 @@ const fs = require("fs");
 const assert = require("assert");
 const BigNumber = require("bignumber.js");
 const path = require('path');
-const provider = "https://api.tez.ie/rpc/carthagenet";
+const provider = "http://127.0.0.1:8732";
 const { InMemorySigner } = require("@taquito/signer");
 const { MichelsonMap } = require('@taquito/michelson-encoder');
 const crypto = require('crypto');
@@ -15,6 +15,40 @@ const { address: tokenAddress } = JSON.parse(
 const { address: marketAddress } = JSON.parse(
     fs.readFileSync(path.join(__dirname, "../deploy/Market.json")).toString()
 );
+
+class Token {
+
+    constructor(Tezos, contract) {
+        this.tezos = Tezos;
+        this.contract = contract;
+    }
+    static async init(Tezos) {
+        return new Token(Tezos, await Tezos.contract.at(tokenAddress))
+    }
+    async getFullStorage(maps = { ledger: [] }) {
+        const storage = await this.contract.storage();
+        var result = {
+            ...storage
+        };
+        for (let key in maps) {
+            result[key + "Extended"] = await maps[key].reduce(async (prev, current) => {
+                let entry;
+
+                try {
+                    entry = await storage[key].get(current);
+                } catch (ex) {
+                    console.error(ex);
+                }
+
+                return {
+                    ...await prev,
+                    [current]: entry
+                };
+            }, Promise.resolve({}));
+        }
+        return result;
+    }
+}
 
 class Market {
 
@@ -90,9 +124,9 @@ class Market {
         return operation;
     }
 
-    async acceptOrder(ipfs) {
+    async acceptOrder(ipfs, deliveryIpfs) {
         const operation = await this.contract.methods
-            .acceptOrder(ipfs)
+            .acceptOrder(ipfs, deliveryIpfs)
             .send();
         await operation.confirmation();
         return operation;
@@ -139,11 +173,13 @@ class Market {
     }
 
     async withdraw(address, amount) {
-        const operation = await this.contract.methods
-            .withdraw(address, amount)
-            .send();
-        await operation.confirmation();
-        return operation;
+        try {
+            const operation = await this.contract.methods
+                .withdraw(address, amount)
+                .send();
+            await operation.confirmation();
+            return operation;
+        } catch (E) {console.log(E)}
     }
 
     async withdrawFee(address, amount) {
@@ -323,10 +359,11 @@ describe('Market', function () {
             let Tezos1 = await setup("../key1");
             let market = await Market.init(Tezos);
             let ipfs = "bafyreiggcejixnw5wo3gesymhbcwfo7p6yrro2u2se4fcsxikwiexk2efm";
+            let deliveryIpfs = "bafyreiggcejixnw5gdfgesymhbcwfo7p6yrro2u2se4fcsxikwiexk2efm";
             let pkh = await Tezos.signer.publicKeyHash();
             let pkh1 = await Tezos1.signer.publicKeyHash();
 
-            let operation = await market.acceptOrder(ipfs);
+            let operation = await market.acceptOrder(ipfs, deliveryIpfs);
             assert(operation.status === "applied", "Operation was not applied");
             let updatedStorage = await market.getFullStorage({ orders: [ipfs] });
 
@@ -350,20 +387,20 @@ describe('Market', function () {
             assert(operation.status === "applied", "Operation was not applied");
             let updatedStorage = await market.getFullStorage({ orders: [ipfs], accounts: [pkh1] });
 
-            assert.equal(updatedStorage.ordersExtended[ipfs], undefined);
             assert.equal(updatedStorage.accountsExtended[pkh1].balance, parseInt(4000 * 0.99));
             assert.equal(updatedStorage.accountsExtended[pkh1].deals_count, 1);
-            assert.equal(updatedStorage.fee_pool - prevStorage.fee_pool, parseInt(4000 * 0.01));
+            assert.equal(updatedStorage.fee_pool - prevStorage.fee_pool, parseInt(4000 * 0.01 - 10));
         });
     });
 
-    describe('WithdrawFee()', function () {
-        it.skip('should withdraw fee', async function () {
+    describe('Withdraw()', function () {
+        it('should withdraw', async function () {
             this.timeout(1000000);
             let Tezos = await setup();
             let market = await Market.init(Tezos);
+            let token  = await Token.init(Tezos);
             let pkh = await Tezos.signer.publicKeyHash();
-            let amount = "2000";
+            let amount = "1000";
 
             let prevStorage = await market.getFullStorage({ accounts: [pkh] });
             let operation = await market.withdraw(pkh, amount);
@@ -371,7 +408,7 @@ describe('Market', function () {
 
             let updatedStorage = await market.getFullStorage({ accounts: [pkh] });
 
-            assert.equal(prevStorage.accountsExtended[pkh] - updatedStorage.accountsExtended[pkh].balance, parseInt(amount));
+            assert.equal(prevStorage.accountsExtended[pkh].balance - updatedStorage.accountsExtended[pkh].balance, parseInt(amount));
         });
     });
 
