@@ -14,7 +14,6 @@ block {
  } with s
 
 function withdrawFee (
-    const this : address;
     const receiver : address;
     const value: nat;
     var s: market_storage ) :  (list(operation) * market_storage) is
@@ -22,10 +21,9 @@ block {
     if Tezos.sender =/= s.owner then failwith("Permision denied") else skip;
     if s.fee_pool < value then failwith("Not enough funds") else skip;
     s.fee_pool := abs(s.fee_pool - value);
- } with (list transaction(Transfer(this, receiver, value), 0mutez, (get_contract(s.token): contract(token_action))); end, s)
+ } with (list transaction(Transfer(Tezos.self_address, receiver, value), 0mutez, (get_contract(s.token): contract(token_action))); end, s)
 
 function withdraw (
-    const this : address;
     const receiver : address;
     const value: nat;
     var s: market_storage ) :  (list(operation) * market_storage) is
@@ -34,7 +32,7 @@ block {
     if user.balance < value then failwith("Not enough funds") else skip;
     user.balance := abs(user.balance - value);
     s.accounts[Tezos.sender] := user;
- } with (list transaction(Transfer(this, receiver, value), 0mutez, (get_contract(s.token): contract(token_action))); end, s)
+ } with (list transaction(Transfer(Tezos.self_address, receiver, value), 0mutez, (get_contract(s.token): contract(token_action))); end, s)
 
 function register (
     const this : address;
@@ -255,14 +253,14 @@ block {
 function main (const p : market_action ; const s : market_storage) :
     (list(operation) * market_storage) is case p of
     | SetSettings(n) -> ((nil : list(operation)), setSettings(n.0, n.1, n.2, s))
-    | WithdrawFee(n) -> withdrawFee(Tezos.self_address, n.0, n.1, s)  
+    | WithdrawFee(n) -> withdrawFee(n.0, n.1, s)  
     | Register(n) -> register(Tezos.self_address, n.0, n.1, s)
     | ChangeSubscription(n) -> changeSubscription(Tezos.self_address, n, s)
     | MakeOrder(n) -> makeOrder(Tezos.self_address, n.0, n.1, n.2, s)
     | AcceptOrder(n) -> ((nil : list(operation)), manageOrder(n.0, ConfirmOrderAction(n.1), s))
     | CancelOrder(n) -> ((nil : list(operation)), manageOrder(n, CancelOrderAction, s))
     | ConfirmReceiving(n) -> ((nil : list(operation)), manageOrder(n, ReceiveOrderAction, s))   
-    | Withdraw(n) -> withdraw(Tezos.self_address, n.0, n.1, s)
+    | Withdraw(n) -> withdraw(n.0, n.1, s)
     | AddItem(n) -> ((nil : list(operation)), addItem(n.0, n.1, s))
     | DeleteItem(n) -> ((nil : list(operation)), deleteItem(n, s))
     | RequestRefund(n) -> ((nil : list(operation)), requestRefund(n.0, n.1, s))

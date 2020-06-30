@@ -4,7 +4,7 @@ module.exports = {
     owner: "tz1bQEJqMqC92ommfsRB6pWG9LVBKNgXPysh",
     totalSupply: "10000000000",
     ledger: MichelsonMap.fromLiteral({
-        "tz1bQEJqMqC92ommfsRB6pWG9LVBKNgXPysh": {
+        "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb": {
             balance: "3000000000",
             allowances: MichelsonMap.fromLiteral({})
         },
@@ -16,7 +16,7 @@ module.exports = {
             balance: "2000000000",
             allowances: MichelsonMap.fromLiteral({})
         },
-        "tz1UbJvKdgfP4WXVttHyL7LLaMon5TTmdp73": {
+        "tz1MnmtP4uAcgMpeZN6JtyziXeFqqwQG6yn6": {
             balance: "2000000000",
             allowances: MichelsonMap.fromLiteral({})
         }

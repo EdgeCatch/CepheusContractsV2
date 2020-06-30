@@ -6,7 +6,7 @@ const { address: tokenAddress } = JSON.parse(
 );
 module.exports = {
     token: tokenAddress,
-    owner: "tz1bQEJqMqC92ommfsRB6pWG9LVBKNgXPysh",
+    owner: "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb",
     cashback: "10",
     fee_pool: "0",
     items_db: "",
